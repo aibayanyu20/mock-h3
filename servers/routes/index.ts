@@ -1,3 +1,3 @@
 export default () => {
-  return 'Hello Mock H31'
+  return 'Hello Mock H3'
 }

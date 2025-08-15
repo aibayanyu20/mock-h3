@@ -214,7 +214,7 @@ async function addPluginFile(file: string, ctx: MockH3Ctx, payload: Record<strin
     if (module && module.default) {
       const plugin = module.default
       if (typeof plugin === 'function') {
-        ctx.h3?.use(plugin)
+        ctx.h3?.use(plugin())
 
         const eventName = payload.eventName || 'init'
         const changedFiles = payload.changedFiles || new Set()
