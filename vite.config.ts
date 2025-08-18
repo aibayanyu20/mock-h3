@@ -6,6 +6,10 @@ import { mockH3 } from './lib/index'
 export default defineConfig({
   plugins: [
     vue(),
-    mockH3(),
+    mockH3({
+      h3Config: {
+        debug: true,
+      },
+    }),
   ],
 })

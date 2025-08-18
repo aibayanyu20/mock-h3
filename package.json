@@ -9,8 +9,9 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node ./dist/servers/app.mjs"
   },
   "dependencies": {
     "chalk": "^5.5.0",

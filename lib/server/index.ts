@@ -5,11 +5,7 @@ import { H3, toNodeHandler } from 'h3'
 import pathe from 'pathe'
 import { glob } from 'tinyglobby'
 import { normalizePath } from 'vite'
-
-function getBasePath(ctx: MockH3Ctx) {
-  const cwd = ctx.resolveConfig?.root || process.cwd()
-  return normalizePath(pathe.resolve(cwd, ctx.srcDir))
-}
+import { getBasePath } from '../utils/tools'
 
 function generateRoutePath(basePath: string, mockPath: string, baseUrl: string) {
   if (mockPath === '.')
@@ -214,7 +210,7 @@ async function addPluginFile(file: string, ctx: MockH3Ctx, payload: Record<strin
     if (module && module.default) {
       const plugin = module.default
       if (typeof plugin === 'function') {
-        ctx.h3?.use(plugin())
+        ctx.h3?.register(plugin())
 
         const eventName = payload.eventName || 'init'
         const changedFiles = payload.changedFiles || new Set()

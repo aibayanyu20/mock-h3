@@ -1,7 +1,7 @@
 import type { PluginOption } from 'vite'
 import type { MockH3Ctx, MockH3Options } from './types'
-import { H3 } from 'h3'
 import { createLogger } from 'vite'
+import { createBuild } from './build/create-build'
 import { createServer } from './server'
 
 function mockH3(options: MockH3Options = {}): PluginOption {
@@ -39,6 +39,11 @@ function mockH3(options: MockH3Options = {}): PluginOption {
       ctx.server = server
       ctx.isPreviewSever = true
       await createServer(ctx)
+    },
+    async generateBundle() {
+      if (ctx.build) {
+        await createBuild(ctx)
+      }
     },
   }
 }
