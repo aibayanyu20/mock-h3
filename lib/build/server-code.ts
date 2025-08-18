@@ -30,6 +30,7 @@ function getMethod(filePath: string) {
   }
   return 'get'
 }
+
 async function createSever() {
   const app = new H3()
   const baseDir = pathe.dirname(fileURLToPath(import.meta.url))
@@ -130,7 +131,7 @@ async function createSever() {
 
   await resolverRoutes()
 
-  //   过滤所有的插件信息
+  // 过滤所有的插件信息
   serve(app, {
 
   })

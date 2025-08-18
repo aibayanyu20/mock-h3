@@ -10,19 +10,18 @@ const baseDir = pathe.dirname(fileURLToPath(import.meta.url))
 export async function createBuild(ctx: MockH3Ctx) {
   const basePath = getBasePath(ctx)
   const mainCodePath = pathe.resolve(baseDir, 'server-code.ts')
-  //  开始构建
-  ctx.logger.info(`\nStarting build in ${basePath}`, {
-    timestamp: true,
-  })
   // 扫描这个目录下面的所有的文件，然后进行构建
-  const files = await glob('**/*.{js,ts}', {
-    cwd: basePath,
-    ignore: [
-      '**/*.spec.{js,ts}',
-      '**/*.test.{js,ts}',
-      '**/*.d.{js,ts}',
-    ],
-  })
+  const files = await glob(
+    '**/*.{js,ts}',
+    {
+      cwd: basePath,
+      ignore: [
+        '**/*.spec.{js,ts}',
+        '**/*.test.{js,ts}',
+        '**/*.d.{js,ts}',
+      ],
+    },
+  )
   // 创建输出的目录
   const outputDir = getOutputPath(ctx)
 
