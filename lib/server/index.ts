@@ -2,6 +2,7 @@ import type { ViteDevServer } from 'vite'
 import type { Method, MockH3Ctx } from '../types'
 import chalk from 'chalk'
 import { H3, toNodeHandler } from 'h3'
+import { createJiti } from 'jiti'
 import pathe from 'pathe'
 import { glob } from 'tinyglobby'
 import { normalizePath } from 'vite'
@@ -106,6 +107,8 @@ function getRouteInfoFromFile(file: string, ctx: MockH3Ctx) {
   }
 }
 
+const jitiImport = createJiti(import.meta.url)
+
 // 加载单个路由文件
 async function addRouteFile(file: string, ctx: MockH3Ctx, payload: Record<string, any> = {}) {
   const routeInfo = getRouteInfoFromFile(file, ctx)
@@ -118,9 +121,9 @@ async function addRouteFile(file: string, ctx: MockH3Ctx, payload: Record<string
   const fullPath = pathe.resolve(getBasePath(ctx), 'routes', file)
 
   try {
-    const module = await import(`${fullPath}?v=${Date.now()}`)
-    if (module && module.default) {
-      const _default = module.default
+    const module = await jitiImport.import<any>(`${fullPath}?v=${Date.now()}`, { default: true })
+    if (module && module) {
+      const _default = module
       ctx.h3?.on(method as Method, routePath, _default)
     } else {
       ctx.h3?.on(method as Method, routePath, () => 'Mock File Is Not Exist Please Check')
@@ -159,10 +162,10 @@ async function addMiddlewareFile(file: string, ctx: MockH3Ctx, payload: Record<s
   const middlewareKey = generateMiddlewareKey(file)
 
   try {
-    const module = await import(`${fullPath}?v=${Date.now()}`)
+    const module = await jitiImport.import<any>(`${fullPath}?v=${Date.now()}`, { default: true })
 
-    if (module && module.default) {
-      const middleware = module.default
+    if (module && module) {
+      const middleware = module
       if (typeof middleware === 'function') {
         ctx.h3?.use(middleware)
 
@@ -205,10 +208,10 @@ async function addPluginFile(file: string, ctx: MockH3Ctx, payload: Record<strin
   const pluginKey = generatePluginKey(file)
 
   try {
-    const module = await import(`${fullPath}?v=${Date.now()}`)
+    const module = await jitiImport.import<any>(`${fullPath}?v=${Date.now()}`, { default: true })
 
-    if (module && module.default) {
-      const plugin = module.default
+    if (module && module) {
+      const plugin = module
       if (typeof plugin === 'function') {
         ctx.h3?.register(plugin())
 
