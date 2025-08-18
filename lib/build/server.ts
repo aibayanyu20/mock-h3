@@ -3,13 +3,13 @@ import type { MockH3Ctx } from '../types'
 import fs from 'node:fs/promises'
 // 替换 pathe 为原生 path
 import path from 'node:path'
-import { getBasePath } from '../utils/tools'
+import { getOutputPath } from '../utils/tools'
 
 export async function genServerCode(ctx: MockH3Ctx) {
   const prefix = ctx.prefix
   const h3Config = ctx.h3Config || {}
 
-  const outDir = getBasePath(ctx)
+  const outDir = getOutputPath(ctx)
   // 使用原生 path 计算路径
   const runtimeDir = path.resolve(outDir, '.runtime')
   const appFullPath = path.resolve(runtimeDir, 'app.ts')
@@ -242,7 +242,7 @@ async function createSever() {
   // 过滤所有的插件信息
   serve(app, {
     port: ${buildOptions.port || 3000},
-    hostname: ${JSON.stringify(buildOptions.host || 'localhost')},
+    host: ${JSON.stringify(buildOptions.host || 'localhost')},
   })
 }
 

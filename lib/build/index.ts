@@ -37,7 +37,7 @@ export async function createBuild(ctx: MockH3Ctx) {
     platform: 'node',
     outDir: outputDir,
     config: false,
-    clean: true,
+    clean: false,
     noExternal: () => true,
     skipNodeModulesBundle: false,
     logLevel: 'silent',
