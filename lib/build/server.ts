@@ -66,7 +66,152 @@ import { fileURLToPath } from 'node:url'
 import { H3, serve, serveStatic } from 'h3'
 import path from 'node:path'
 
-function generateRoutePath(basePath: string, mockPath: string, baseUrl: string) {
+function resolvePath(path, options = {}) {
+  // 处理空字符串和仅包含空格的字符串
+  if (!path || !path.trim()) {
+    return ''
+  }
+
+  // 路径规范化 - 移除多余的斜杠和清理路径
+  let normalizedPath = path.replace(/\\/+/g, '/').trim()
+  
+  // 移除末尾的斜杠（除非是根路径）
+  if (normalizedPath.endsWith('/') && normalizedPath !== '/') {
+    normalizedPath = normalizedPath.slice(0, -1)
+  }
+  
+  if (!normalizedPath) {
+    return ''
+  }
+
+  const paths = normalizedPath.split('/')
+  const newPaths = []
+  
+  for (const _path of paths) {
+    if (_path.startsWith('[') && _path.endsWith(']')) {
+      const _name = _path.slice(1, -1)
+      
+      // 处理可选参数 [[param]]
+      if (_name.startsWith('[') && _name.endsWith(']')) {
+        const optionalParam = _name.slice(1, -1)
+        
+        // 处理可选的 catch-all 参数 [[...param]]
+        if (optionalParam.startsWith('...')) {
+          const catchAllParam = optionalParam.slice(3)
+          if (catchAllParam.includes(':')) {
+            const [param, type] = catchAllParam.split(':')
+            newPaths.push('**:' + param + '(' + getTypeRegex(type) + ')?')
+          } else {
+            newPaths.push('**:' + catchAllParam + '?')
+          }
+          continue
+        }
+        
+        if (optionalParam.includes(':')) {
+          const [param, type] = optionalParam.split(':')
+          newPaths.push(':' + param + '(' + getTypeRegex(type) + ')?')
+        } else {
+          newPaths.push(':' + optionalParam + '?')
+        }
+        continue
+      }
+      
+      // 处理类型化参数 [param:type]
+      if (_name.includes(':')) {
+        const colonIndex = _name.indexOf(':')
+        const param = _name.substring(0, colonIndex)
+        const type = _name.substring(colonIndex + 1)
+        
+        if (param.startsWith('...')) {
+          // 带类型的 catch-all 参数
+          const catchAllParam = param.slice(3)
+          newPaths.push('**:' + catchAllParam + '(' + getTypeRegex(type) + ')')
+        } else {
+          // 普通类型化参数
+          newPaths.push(':' + param + '(' + getTypeRegex(type) + ')')
+        }
+        continue
+      }
+      
+      // 原有的逻辑保持不变
+      if (_name === 'all' || _name === '...') {
+        newPaths.push('*')
+      } else if (_name === '...all') {
+        newPaths.push('**')
+      } else if (_name.startsWith('...')) {
+        // 如果是出现...就进行替换
+        newPaths.push('**:' + _name.slice(3))
+      } else {
+        newPaths.push(':' + _name)
+      }
+    } else {
+      // 处理静态路径段的特殊字符
+      if (options.strict && _path.includes('*')) {
+        throw new Error('Invalid path segment: ' + _path + '. Wildcard characters not allowed in static segments when strict mode is enabled.')
+      }
+      newPaths.push(_path)
+    }
+  }
+  
+  const result = newPaths.join('/')
+  
+  // 验证结果路径的有效性
+  if (options.strict) {
+    validateResolvedPath(result)
+  }
+  
+  return result
+}
+
+// 获取类型对应的正则表达式
+function getTypeRegex(type) {
+  const typeRegexMap = {
+    'number': '\\\\\\\\d+',
+    'int': '\\\\\\\\d+',
+    'float': '\\\\\\\\d+\\\\\\\\.\\\\\\\\d+',
+    'uuid': '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+    'slug': '[a-z0-9-]+',
+    'alpha': '[a-zA-Z]+',
+    'alphanumeric': '[a-zA-Z0-9]+',
+    'email': '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\\\\\.[a-zA-Z]{2,}',
+    'date': '\\\\\\\\d{4}-\\\\\\\\d{2}-\\\\\\\\d{2}',
+    'year': '\\\\\\\\d{4}',
+    'month': '\\\\\\\\d{1,2}',
+    'day': '\\\\\\\\d{1,2}',
+  }
+  
+  return typeRegexMap[type] || type // 如果不是预定义类型，则作为自定义正则表达式
+}
+
+// 验证解析后的路径
+function validateResolvedPath(path) {
+  // 检查是否有无效的参数组合
+  if (path.includes('**:') && path.includes('*')) {
+    const segments = path.split('/')
+    const wildcardIndex = segments.findIndex(function(seg) { return seg === '*' })
+    const catchAllIndex = segments.findIndex(function(seg) { return seg.startsWith('**:') })
+    
+    if (wildcardIndex >= 0 && catchAllIndex >= 0 && wildcardIndex > catchAllIndex) {
+      throw new Error('Invalid path: wildcard (*) cannot appear after catch-all (**:param)')
+    }
+  }
+  
+  // 检查多个 catch-all 参数
+  const catchAllCount = (path.match(/\\\\\\\\*\\\\\\\\*:/g) || []).length
+  if (catchAllCount > 1) {
+    throw new Error('Invalid path: multiple catch-all parameters are not allowed')
+  }
+  
+  // 检查 catch-all 参数是否在最后
+  if (catchAllCount === 1) {
+    const lastSegment = path.split('/').pop()
+    if (lastSegment && !lastSegment.startsWith('**:')) {
+      throw new Error('Invalid path: catch-all parameter must be the last segment')
+    }
+  }
+}
+
+function generateRoutePath(basePath, mockPath, baseUrl) {
   if (mockPath === '.')
     mockPath = ''
 
@@ -78,12 +223,13 @@ function generateRoutePath(basePath: string, mockPath: string, baseUrl: string) 
   if (p.endsWith('/')) {
     p = p.slice(0, -1)
   }
-  return p
+  // 最后再对path进行一次处理
+  return resolvePath(p)
 }
 
 const validMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options']
 
-function getMethod(filePath: string) {
+function getMethod(filePath) {
   const fileName = path.basename(filePath)
   const paths = fileName.split('.')
   const method = paths[1]
@@ -94,16 +240,16 @@ function getMethod(filePath: string) {
 }
 
 // 新增：统一转 POSIX 分隔符
-function toPosix(p: string) {
+function toPosix(p) {
   return p.split(path.sep).join('/')
 }
 
 // 使用原生 fs 递归扫描 **/*.mjs（增加：先检查目录是否存在与类型）
-async function readDirRecursive(dir: string): Promise<string[]> {
-  let stats: any
+async function readDirRecursive(dir) {
+  let stats
   try {
     stats = await fs.stat(dir)
-  } catch (e: any) {
+  } catch (e) {
     if (e && e.code === 'ENOENT') return []
     throw e
   }
@@ -112,11 +258,11 @@ async function readDirRecursive(dir: string): Promise<string[]> {
   let entries
   try {
     entries = await fs.readdir(dir, { withFileTypes: true })
-  } catch (e: any) {
+  } catch (e) {
     if (e && e.code === 'ENOENT') return [] // 目录在 stat 与 readdir 之间被删除
     throw e
   }
-  const tasks = entries.map(async (ent) => {
+  const tasks = entries.map(async function(ent) {
     const full = path.join(dir, ent.name)
     if (ent.isDirectory()) {
       return await readDirRecursive(full)

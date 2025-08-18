@@ -8,6 +8,148 @@ import { glob } from 'tinyglobby'
 import { normalizePath } from 'vite'
 import { getBasePath } from '../utils/tools'
 
+export function resolvePath(path: string, options: { strict?: boolean } = {}) {
+  // 处理空字符串和仅包含空格的字符串
+  if (!path || !path.trim()) {
+    return ''
+  }
+
+  // 路径规范化 - 移除多余的斜杠和清理路径
+  let normalizedPath = normalizePath(path.trim())
+
+  // 移除末尾的斜杠（除非是根路径）
+  if (normalizedPath.endsWith('/') && normalizedPath !== '/') {
+    normalizedPath = normalizedPath.slice(0, -1)
+  }
+
+  if (!normalizedPath) {
+    return ''
+  }
+
+  const paths = normalizedPath.split('/')
+  const newPaths = []
+
+  for (const _path of paths) {
+    if (_path.startsWith('[') && _path.endsWith(']')) {
+      const _name = _path.slice(1, -1)
+
+      // 处理可选参数 [[param]]
+      if (_name.startsWith('[') && _name.endsWith(']')) {
+        const optionalParam = _name.slice(1, -1)
+
+        // 处理可选的 catch-all 参数 [[...param]]
+        if (optionalParam.startsWith('...')) {
+          const catchAllParam = optionalParam.slice(3)
+          if (catchAllParam.includes(':')) {
+            const [param, type] = catchAllParam.split(':')
+            newPaths.push(`**:${param}(${getTypeRegex(type)})?`)
+          } else {
+            newPaths.push(`**:${catchAllParam}?`)
+          }
+          continue
+        }
+
+        if (optionalParam.includes(':')) {
+          const [param, type] = optionalParam.split(':')
+          newPaths.push(`:${param}(${getTypeRegex(type)})?`)
+        } else {
+          newPaths.push(`:${optionalParam}?`)
+        }
+        continue
+      }
+
+      // 处理类型化参数 [param:type]
+      if (_name.includes(':')) {
+        const colonIndex = _name.indexOf(':')
+        const param = _name.substring(0, colonIndex)
+        const type = _name.substring(colonIndex + 1)
+
+        if (param.startsWith('...')) {
+          // 带类型的 catch-all 参数
+          const catchAllParam = param.slice(3)
+          newPaths.push(`**:${catchAllParam}(${getTypeRegex(type)})`)
+        } else {
+          // 普通类型化参数
+          newPaths.push(`:${param}(${getTypeRegex(type)})`)
+        }
+        continue
+      }
+
+      // 原有的逻辑保持不变
+      if (_name === 'all' || _name === '...') {
+        newPaths.push('*')
+      } else if (_name === '...all') {
+        newPaths.push('**')
+      } else if (_name.startsWith('...')) {
+        // 如果是出现...就进行替换
+        newPaths.push(`**:${_name.slice(3)}`)
+      } else {
+        newPaths.push(`:${_name}`)
+      }
+    } else {
+      // 处理静态路径段的特殊字符
+      if (options.strict && _path.includes('*')) {
+        throw new Error(`Invalid path segment: ${_path}. Wildcard characters not allowed in static segments when strict mode is enabled.`)
+      }
+      newPaths.push(_path)
+    }
+  }
+
+  const result = newPaths.join('/')
+
+  // 验证结果路径的有效性
+  if (options.strict) {
+    validateResolvedPath(result)
+  }
+
+  return result
+}
+
+// 获取类型对应的正则表达式
+function getTypeRegex(type: string): string {
+  const typeRegexMap: Record<string, string> = {
+    number: '\\d+',
+    int: '\\d+',
+    float: '\\d+\\.\\d+',
+    uuid: '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+    slug: '[a-z0-9-]+',
+    alpha: '[a-zA-Z]+',
+    alphanumeric: '[a-zA-Z0-9]+',
+    email: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}',
+    date: '\\d{4}-\\d{2}-\\d{2}',
+    year: '\\d{4}',
+    month: '\\d{1,2}',
+    day: '\\d{1,2}',
+  }
+
+  return typeRegexMap[type] || type // 如果不是预定义类型，则作为自定义正则表达式
+}
+
+// 验证解析后的路径
+function validateResolvedPath(path: string): void {
+  // 检查是否有无效的参数组合
+  if (path.includes('**:') && path.includes('*')) {
+    const segments = path.split('/')
+    const wildcardIndex = segments.findIndex(seg => seg === '*')
+    const catchAllIndex = segments.findIndex(seg => seg.startsWith('**:'))
+
+    if (wildcardIndex >= 0 && catchAllIndex >= 0 && wildcardIndex > catchAllIndex) {
+      throw new Error('Invalid path: wildcard (*) cannot appear after catch-all (**:param)')
+    }
+  }
+
+  // 检查多个 catch-all 参数
+  const catchAllCount = (path.match(/\*\*:/g) || []).length
+  if (catchAllCount > 1) {
+    throw new Error('Invalid path: multiple catch-all parameters are not allowed')
+  }
+
+  // 检查 catch-all 参数是否在最后
+  if (catchAllCount === 1 && !path.split('/').pop()?.startsWith('**:')) {
+    throw new Error('Invalid path: catch-all parameter must be the last segment')
+  }
+}
+
 function generateRoutePath(basePath: string, mockPath: string, baseUrl: string) {
   if (mockPath === '.')
     mockPath = ''
@@ -20,7 +162,8 @@ function generateRoutePath(basePath: string, mockPath: string, baseUrl: string) 
     // 移除末尾的/
     path = path.slice(0, -1)
   }
-  return path
+  // 最后再对path进行一次处理
+  return resolvePath(path)
 }
 
 // 扫描文件夹信息
