@@ -95,9 +95,24 @@ function toPosix(p: string) {
   return p.split(path.sep).join('/')
 }
 
-// 使用原生 fs 递归扫描 **/*.mjs
+// 使用原生 fs 递归扫描 **/*.mjs（增加：先检查目录是否存在与类型）
 async function readDirRecursive(dir: string): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true })
+  let stats: any
+  try {
+    stats = await fs.stat(dir)
+  } catch (e: any) {
+    if (e && e.code === 'ENOENT') return []
+    throw e
+  }
+  if (!stats.isDirectory()) return []
+
+  let entries
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true })
+  } catch (e: any) {
+    if (e && e.code === 'ENOENT') return [] // 目录在 stat 与 readdir 之间被删除
+    throw e
+  }
   const tasks = entries.map(async (ent) => {
     const full = path.join(dir, ent.name)
     if (ent.isDirectory()) {
@@ -150,9 +165,13 @@ async function createSever() {
     })
   })
 
-  // 定义扫描函数（替换 tinyglobby.glob）
+  // 定义扫描函数（替换 tinyglobby.glob；增加：先检查目录是否存在）
   const scanFiles = async (dir: string) => {
     const cwd = path.resolve(baseDir, dir)
+    const stats = await fs.stat(cwd).catch(() => null)
+    if (!stats || !stats.isDirectory()) {
+      return []
+    }
     const files = await readDirRecursive(cwd)
     // 返回相对路径，保持与原逻辑一致
     return files.map(f => path.relative(cwd, f))
