@@ -31,7 +31,7 @@
     "lib": "tsdown",
     "preview": "vite preview",
     "start": "node ./dist/servers/app.mjs",
-    "prepublish": "pnpm build",
+    "prepublish": "pnpm lib",
     "release": "bumpp"
   },
   "peerDependencies": {
