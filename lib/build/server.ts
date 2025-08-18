@@ -86,7 +86,7 @@ const validMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'
 function getMethod(filePath: string) {
   const fileName = path.basename(filePath)
   const paths = fileName.split('.')
-  const method = paths[0]
+  const method = paths[1]
   if (validMethods.includes(method)) {
     return method
   }
@@ -153,7 +153,20 @@ async function createSever() {
     return serveStatic(event, {
       indexNames: ['index.html'],
       getContents: (id) => {
-        return fs.readFile(getFilePath(id), 'utf-8')
+        const filePath = getFilePath(id);
+        const ext = path.extname(filePath).toLowerCase();
+        const TEXT_EXTS = [
+            ".html", ".htm",
+            ".js", ".mjs", ".ts",
+            ".css", ".json", ".map",
+            ".txt", ".md", ".vue",
+            ".xml", ".svg"
+        ];
+        // 文本文件按 utf-8 读
+        if (TEXT_EXTS.includes(ext)) {
+          return fs.readFile(filePath, "utf-8");
+        }
+        return fs.readFile(getFilePath(id))
       },
       getMeta: async (id) => {
         const stats = await fs.stat(getFilePath(id)).catch(() => {
