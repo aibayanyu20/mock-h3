@@ -3,6 +3,24 @@
   "type": "module",
   "version": "0.0.0",
   "description": "this is vite plugin by mock-h3",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js",
+      "default": "./dist/vite.js"
+    },
+    "./prod": {
+      "types": "./dist/prod.d.ts",
+      "import": "./dist/prod.js",
+      "default": "./dist/prod.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "package.json"
@@ -10,13 +28,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lib": "tsdown",
     "preview": "vite preview",
-    "start": "node ./dist/servers/app.mjs"
+    "start": "node ./dist/servers/app.mjs",
+    "release": "bumpp"
+  },
+  "peerDependencies": {
+    "h3": ">=2.0.0-beta.3",
+    "vite": ">=5.0.0"
   },
   "dependencies": {
     "chalk": "^5.5.0",
     "h3": "2.0.0-beta.3",
-    "lru-cache": "^11.1.0",
     "pathe": "^2.0.3",
     "tinyglobby": "^0.2.14",
     "tsdown": "^0.14.1"
@@ -26,6 +49,7 @@
     "@types/node": "^24.2.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.7.0",
+    "bumpp": "^10.2.3",
     "eslint": "^9.33.0",
     "jiti": "^2.5.1",
     "typescript": "~5.8.3",
