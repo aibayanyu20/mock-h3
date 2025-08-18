@@ -3,13 +3,13 @@ import type { MockH3Ctx } from '../types'
 import fs from 'node:fs/promises'
 // 替换 pathe 为原生 path
 import path from 'node:path'
-import { getOutputPath } from '../utils/tools'
+import { getBasePath } from '../utils/tools'
 
 export async function genServerCode(ctx: MockH3Ctx) {
   const prefix = ctx.prefix
   const h3Config = ctx.h3Config || {}
 
-  const outDir = getOutputPath(ctx)
+  const outDir = getBasePath(ctx)
   // 使用原生 path 计算路径
   const runtimeDir = path.resolve(outDir, '.runtime')
   const appFullPath = path.resolve(runtimeDir, 'app.ts')
