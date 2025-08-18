@@ -17,7 +17,19 @@ export interface MockH3Options {
    * 是否需要构建时打包
    * @default true
    */
-  build?: boolean
+  build?: boolean | {
+    /**
+     * 配置启动的端口号
+     * @default 3000
+     */
+    port?: number
+
+    /**
+     * 配置默认的host
+     * @default localhost
+     */
+    host?: string
+  }
   /**
    * 构建打包所需要的参数
    */

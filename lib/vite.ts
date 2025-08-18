@@ -1,7 +1,7 @@
 import type { PluginOption } from 'vite'
 import type { MockH3Ctx, MockH3Options } from './types'
 import { createLogger } from 'vite'
-import { createBuild } from './build/create-build'
+import { createBuild } from './build'
 import { createServer } from './server'
 
 function mockH3(options: MockH3Options = {}): PluginOption {

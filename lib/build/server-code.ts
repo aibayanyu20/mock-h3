@@ -132,9 +132,7 @@ async function createSever() {
   await resolverRoutes()
 
   // 过滤所有的插件信息
-  serve(app, {
-
-  })
+  serve(app, {})
 }
 
 createSever().then(() => {
