@@ -1,4 +1,5 @@
 export {
+  basicAuth,
   createEventStream,
   defineEventHandler,
   defineHandler,
