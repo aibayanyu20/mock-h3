@@ -1,3 +1,3 @@
 export default () => {
-  console.log('load middleware')
+  console.log('loaded middleware')
 }
