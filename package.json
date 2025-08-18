@@ -1,7 +1,7 @@
 {
   "name": "mock-h3",
   "type": "module",
-  "version": "0.0.1-beta.2",
+  "version": "0.0.1-beta.3",
   "description": "this is vite plugin by mock-h3",
   "exports": {
     ".": {
