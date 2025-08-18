@@ -14,6 +14,9 @@ export async function genServerCode(ctx: MockH3Ctx) {
   const runtimeDir = path.resolve(outDir, '.runtime')
   const appFullPath = path.resolve(runtimeDir, 'app.ts')
 
+  // 处理项目问题
+  const buildOptions = typeof ctx.build === 'object' ? ctx.build : {}
+
   // 将任意 JS 值序列化为可嵌入源码的字符串，且对外层模板安全
   const escapeForTemplate = (str: string) =>
     str.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')
@@ -237,7 +240,10 @@ async function createSever() {
   await resolverRoutes()
 
   // 过滤所有的插件信息
-  serve(app, {})
+  serve(app, {
+    port: ${buildOptions.port || 3000},
+    hostname: ${JSON.stringify(buildOptions.host || 'localhost')},
+  })
 }
 
 createSever().then(() => {
