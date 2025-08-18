@@ -478,7 +478,11 @@ export async function createServer(ctx: MockH3Ctx) {
   if (server.printUrls) {
     const _printUrls = server.printUrls
     server.printUrls = () => {
-      console.log('Printed URLs')
+      const colorUrl = (url: string) =>
+        chalk.cyan(url.replace(/:(\d+)\//, (_, port) => `:${chalk.bold(port)}/`))
+      const local = server.resolvedUrls?.local?.[0] ?? 'http://localhost:5173/'
+      const prefix = ctx.prefix.slice(1)
+      console.log(`  ${chalk.green('➜')}  ${chalk.bold('Mock')}:    ${colorUrl(`${local}${prefix}/`)}`)
       _printUrls()
     }
   }

@@ -7,11 +7,7 @@ import { genServerCode } from './server'
 
 export async function createBuild(ctx: MockH3Ctx) {
   const basePath = getBasePath(ctx)
-  //   const mainCodePath = pathe.resolve(baseDir, 'server-code.ts')
-  const {
-    appPath: mainCodePath,
-    clean,
-  } = await genServerCode(ctx)
+  const { appPath: mainCodePath, clean } = await genServerCode(ctx)
   // 扫描这个目录下面的所有的文件，然后进行构建
   const files = await glob(
     '**/*.{js,ts}',
