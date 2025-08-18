@@ -5,7 +5,7 @@ A mock server plugin for Vite.
 ## Usage
 
 ```shell
-pnpm add mock-h3
+pnpm add mock-h3 h3@beta -D
 ```
 
 Import in `vite.config.ts`:
