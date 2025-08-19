@@ -65,6 +65,7 @@ export async function genServerCode(ctx: MockH3Ctx) {
 import { fileURLToPath } from 'node:url'
 import { H3, serve, serveStatic } from 'h3'
 import path from 'node:path'
+import { vendorMap } from './vendor'  // 从 vendor 加载一切
 
 function resolvePath(path, options = {}) {
   // 处理空字符串和仅包含空格的字符串
@@ -73,7 +74,7 @@ function resolvePath(path, options = {}) {
   }
 
   // 路径规范化 - 移除多余的斜杠和清理路径
-  let normalizedPath = path.replace(/\\/+/g, '/').trim()
+  let normalizedPath = path.replace(/\\\\+/g, '/').trim()
   
   // 移除末尾的斜杠（除非是根路径）
   if (normalizedPath.endsWith('/') && normalizedPath !== '/') {
@@ -239,44 +240,9 @@ function getMethod(filePath) {
   return 'get'
 }
 
-// 新增：统一转 POSIX 分隔符
-function toPosix(p) {
-  return p.split(path.sep).join('/')
-}
-
-// 使用原生 fs 递归扫描 **/*.mjs（增加：先检查目录是否存在与类型）
-async function readDirRecursive(dir) {
-  let stats
-  try {
-    stats = await fs.stat(dir)
-  } catch (e) {
-    if (e && e.code === 'ENOENT') return []
-    throw e
-  }
-  if (!stats.isDirectory()) return []
-
-  let entries
-  try {
-    entries = await fs.readdir(dir, { withFileTypes: true })
-  } catch (e) {
-    if (e && e.code === 'ENOENT') return [] // 目录在 stat 与 readdir 之间被删除
-    throw e
-  }
-  const tasks = entries.map(async function(ent) {
-    const full = path.join(dir, ent.name)
-    if (ent.isDirectory()) {
-      return await readDirRecursive(full)
-    }
-    return full.endsWith('.mjs') ? [full] : []
-  })
-  const nested = await Promise.all(tasks)
-  return nested.flat()
-}
-
 async function createSever() {
   const app = new H3(${configCode})
   const baseDir = path.dirname(fileURLToPath(import.meta.url))
-
   const prefix = ${JSON.stringify(prefix)}
 
   // 静态资源配置
@@ -327,78 +293,65 @@ async function createSever() {
     })
   })
 
-  // 定义扫描函数（替换 tinyglobby.glob；增加：先检查目录是否存在）
-  const scanFiles = async (dir: string) => {
-    const cwd = path.resolve(baseDir, dir)
-    const stats = await fs.stat(cwd).catch(() => null)
-    if (!stats || !stats.isDirectory()) {
-      return []
-    }
-    const files = await readDirRecursive(cwd)
-    // 返回相对路径，保持与原逻辑一致
-    return files.map(f => path.relative(cwd, f))
-  }
-  const [routes, middlewares, plugins] = await Promise.all([scanFiles('routes'), scanFiles('middleware'), scanFiles('plugins')])
+  // 基于 vendorMap 分类收集
+  const collectByPrefix = (pfx) => Object.keys(vendorMap).filter(k => k.startsWith(pfx))
+  const plugins = collectByPrefix('plugins/')
+  const middlewares = collectByPrefix('middleware/')
+  const routes = collectByPrefix('routes/')
 
-  // 优先加载插件
+  // 优先加载插件（兼容 default 与非 default）
   const resolvePlugins = async () => {
-    if (plugins.length < 1) return
-    for (const plugin of plugins) {
-      const fullPath = path.resolve(baseDir, 'plugins', plugin)
-      const relativePath = path.relative(baseDir, fullPath)
-      const mod = await import('./' + toPosix(relativePath))
-      if (mod.default) {
-        const plugin = mod.default
-        if (typeof plugin === 'function') {
-          app.register(plugin())
-        }
-        else {
-          app.register(plugin)
-        }
+    for (const key of plugins) {
+      const mod = vendorMap[key]
+      const plugin = mod && mod.default ? mod.default : mod
+      if (!plugin) continue
+      if (typeof plugin === 'function') {
+        app.register(plugin())
+      } else {
+        app.register(plugin)
       }
     }
   }
   await resolvePlugins()
 
-  // 处理中间件
+  // 处理中间件（兼容 default 与非 default）
   const resolverMiddlewares = async () => {
-    for (const middleware of middlewares) {
-      const fullPath = path.resolve(baseDir, 'middleware', middleware)
-      const relativePath = path.relative(baseDir, fullPath)
-      const mod = await import('./' + toPosix(relativePath))
-      if (mod.default) {
-        app.use(mod.default)
-      }
+    for (const key of middlewares) {
+      const mod = vendorMap[key]
+      const mw = mod && mod.default ? mod.default : mod
+      if (!mw) continue
+      app.use(mw)
     }
   }
-
   await resolverMiddlewares()
 
-  // 处理路由
+  // 处理路由：从 routes/* 的 key 生成 method 与 path
   const resolverRoutes = async () => {
-    for (const route of routes) {
-      const fullPath = path.resolve(baseDir, 'routes', route)
-      const relativePath = path.relative(baseDir, fullPath)
-      const mod = await import('./' + toPosix(relativePath))
-      if (mod.default) {
-        const dir = toPosix(path.dirname(route))
-        const baseName = path.basename(route)
-        const cleanPath = baseName.split('.')[0]
-        const routePath = generateRoutePath(cleanPath, dir, prefix)
-        const method = getMethod(route)
-        app.on(method, routePath, mod.default)
-      } else {
-        // 未找到的路由信息，这里可以给一个提示信息
-        app.on("get", routePath , () => {
-          return "Please check the route configuration."
-        })
-      }
+    for (const key of routes) {
+      // 去掉 routes/ 前缀，作为“虚拟文件路径”
+      const rel = key.slice('routes/'.length)
+
+      // 使用 posix 以确保 URL 路径分隔符
+      const dir = path.posix.dirname(rel)
+      const baseName = path.posix.basename(rel)
+      const cleanPath = baseName.split('.')[0]
+
+      const routePath = generateRoutePath(
+        cleanPath,
+        dir === '.' ? '' : dir,
+        prefix
+      )
+      const method = getMethod(baseName)
+
+      const mod = vendorMap[key]
+      const handler = mod && mod.default ? mod.default : mod
+      if (!handler) continue
+      app.on(method, routePath, handler)
     }
   }
-
   await resolverRoutes()
 
-  // 过滤所有的插件信息
+  // 启动服务
   serve(app, {
     port: ${buildOptions.port || 3000},
     host: ${JSON.stringify(buildOptions.host || 'localhost')},
