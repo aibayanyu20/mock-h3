@@ -250,7 +250,9 @@ function getRouteInfoFromFile(file: string, ctx: MockH3Ctx) {
   }
 }
 
-const jitiImport = createJiti(import.meta.url)
+const jitiImport = createJiti(import.meta.url, {
+  moduleCache: false,
+})
 
 // 加载单个路由文件
 async function addRouteFile(file: string, ctx: MockH3Ctx, payload: Record<string, any> = {}) {
@@ -264,7 +266,7 @@ async function addRouteFile(file: string, ctx: MockH3Ctx, payload: Record<string
   const fullPath = pathe.resolve(getBasePath(ctx), 'routes', file)
 
   try {
-    const module = await jitiImport.import<any>(`${fullPath}?v=${Date.now()}`, { default: true })
+    const module = await jitiImport.import<any>(fullPath, { default: true })
     if (module && module) {
       const _default = module
       ctx.h3?.on(method as Method, routePath, _default)
@@ -305,7 +307,7 @@ async function addMiddlewareFile(file: string, ctx: MockH3Ctx, payload: Record<s
   const middlewareKey = generateMiddlewareKey(file)
 
   try {
-    const module = await jitiImport.import<any>(`${fullPath}?v=${Date.now()}`, { default: true })
+    const module = await jitiImport.import<any>(fullPath, { default: true })
 
     if (module && module) {
       const middleware = module
@@ -351,7 +353,7 @@ async function addPluginFile(file: string, ctx: MockH3Ctx, payload: Record<strin
   const pluginKey = generatePluginKey(file)
 
   try {
-    const module = await jitiImport.import<any>(`${fullPath}?v=${Date.now()}`, { default: true })
+    const module = await jitiImport.import<any>(fullPath, { default: true })
 
     if (module && module) {
       const plugin = module
