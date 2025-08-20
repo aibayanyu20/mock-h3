@@ -1,10 +1,10 @@
 import type { MockH3Ctx } from '../types'
+import fsp from 'node:fs/promises'
 import pathe from 'pathe'
 import { glob } from 'tinyglobby'
 import { build } from 'tsdown'
 import { getBasePath, getOutputPath } from '../utils/tools'
 import { genServerCode } from './server'
-import fsp from "fs/promises"
 
 export async function createBuild(ctx: MockH3Ctx) {
   const basePath = getBasePath(ctx)
@@ -24,7 +24,7 @@ export async function createBuild(ctx: MockH3Ctx) {
   // 创建输出的目录
   const outputDir = getOutputPath(ctx)
 
-  const runtimeDir = pathe.resolve(outputDir,".runtime")
+  const runtimeDir = pathe.resolve(basePath, '.runtime')
   const vendorFilePath = pathe.resolve(runtimeDir, 'vendor.ts')
 
   const entry: Record<string, string> = {}
@@ -34,25 +34,28 @@ export async function createBuild(ctx: MockH3Ctx) {
   let vendorMap = 'export const vendorMap = {\n'
   for (const rel of files) {
     const abs = pathe.resolve(basePath, rel)
-    const relativePath = pathe.relative(runtimeDir, abs)
-    vendorTs += `import vendor_${index} from '${relativePath}';\n`
     const name = rel.replace(/\.(ts|js)$/, '')
+    const relativePath = pathe.relative(runtimeDir, abs)
     entry[name] = abs
-    vendorMap += `  '${name}': vendor_${index},\n`
-    index++
+    if (name.startsWith('routes') || name.startsWith('middleware') || name.startsWith('plugins')) {
+      vendorTs += `import vendor_${index} from '${relativePath}';\n`
+      vendorMap += `  '${name}': vendor_${index},\n`
+      index++
+    }
   }
 
   vendorMap = `${vendorTs}${vendorMap}\n}`
   // 输出这个文件
-  await fsp.writeFile(vendorFilePath, vendorMap,"utf-8")
+  await fsp.writeFile(vendorFilePath, vendorMap, 'utf-8')
+  entry.vendor = vendorFilePath
 
   // 内置的 server 入口
   entry.app = mainCodePath
   // 开始构建到指定输出目录
   await build({
-    entry:{
-      app:mainCodePath,
-      vendor:vendorFilePath
+    entry: {
+      app: mainCodePath,
+      vendor: vendorFilePath,
     },
     platform: 'node',
     outDir: outputDir,
@@ -63,6 +66,7 @@ export async function createBuild(ctx: MockH3Ctx) {
     logLevel: 'silent',
     report: false,
     format: 'esm',
+    unbundle: true,
     outExtensions: () => {
       return {
         js: '.mjs',
