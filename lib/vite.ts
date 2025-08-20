@@ -12,6 +12,8 @@ function mockH3(options: MockH3Options = {}): PluginOption {
     tsdownOptions = {},
     prefix = '/api',
     h3Config = {},
+    builder = 'tsdown',
+    esbuildOptions = {},
   } = options
   const logger = createLogger('info', { prefix: '[mock:h3]' })
   const ctx: MockH3Ctx = {
@@ -23,6 +25,8 @@ function mockH3(options: MockH3Options = {}): PluginOption {
     prefix,
     registeredRoutes: new Set<string>(),
     h3Config,
+    builder,
+    esbuildOptions,
   }
   return {
     name: 'mock:h3',

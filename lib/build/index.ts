@@ -36,7 +36,7 @@ export async function createBuild(ctx: MockH3Ctx) {
     const abs = pathe.resolve(basePath, rel)
     const name = rel.replace(/\.(ts|js)$/, '')
     const relativePath = pathe.relative(runtimeDir, abs)
-    entry[name] = abs
+    // entry[name] = abs
     if (name.startsWith('routes') || name.startsWith('middleware') || name.startsWith('plugins')) {
       vendorTs += `import vendor_${index} from '${relativePath}';\n`
       vendorMap += `  '${name}': vendor_${index},\n`
@@ -47,33 +47,31 @@ export async function createBuild(ctx: MockH3Ctx) {
   vendorMap = `${vendorTs}${vendorMap}\n}`
   // 输出这个文件
   await fsp.writeFile(vendorFilePath, vendorMap, 'utf-8')
-  entry.vendor = vendorFilePath
-
   // 内置的 server 入口
   entry.app = mainCodePath
-  if (ctx.builder === 'tsup') {
-    // TODO
-    try {
-      const tsup = await import('tsup')
-      await tsup.build({
-        entry,
-        outDir: outputDir,
-        format: 'esm',
-        platform: 'node',
-        config: false,
-        clean: false,
-        bundle: false,
-      })
-    } catch {
-      throw new Error('tsup is not installed, please install it with "npm install tsup"')
-    }
+  if (ctx.builder === 'esbuild') {
+    const esbuild = await import('esbuild')
+    const options = ctx?.esbuildOptions ?? {}
+    await esbuild.build({
+      entryPoints: {
+        app: mainCodePath,
+      },
+      outdir: outputDir,
+      bundle: true,
+      splitting: true,
+      format: 'esm',
+      platform: 'node',
+      target: 'node18',
+      legalComments: 'none',
+      logLevel: 'silent',
+      ...options,
+    })
   } else {
     // 开始构建到指定输出目录
     const options = ctx?.tsdownOptions ?? {}
     await build({
       entry: {
         app: mainCodePath,
-        vendor: vendorFilePath,
       },
       platform: 'node',
       outDir: outputDir,

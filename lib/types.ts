@@ -1,6 +1,6 @@
+import type { BuildOptions } from 'esbuild'
 import type { H3, H3Config } from 'h3'
 import type { Options } from 'tsdown'
-import type { Options as TsupOptions } from 'tsup'
 import type { createLogger, PreviewServer, ResolvedConfig, ViteDevServer } from 'vite'
 
 export interface MockH3Options {
@@ -38,7 +38,7 @@ export interface MockH3Options {
   /**
    * tsup的构建选项
    */
-  tsupOptions?: TsupOptions
+  esbuildOptions?: BuildOptions
   /**
    * 自定义请求的前缀
    * @default "/api"
@@ -52,7 +52,7 @@ export interface MockH3Options {
    * build的方式
    * @default "tsdown"
    */
-  builder?: 'tsdown' | 'tsup'
+  builder?: 'tsdown' | 'esbuild'
 }
 
 export interface MockH3Ctx extends Required<MockH3Options> {
