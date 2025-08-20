@@ -51,29 +51,43 @@ export async function createBuild(ctx: MockH3Ctx) {
 
   // 内置的 server 入口
   entry.app = mainCodePath
-  // 开始构建到指定输出目录
-  const options = ctx?.tsdownOptions ?? {}
-  await build({
-    entry: {
-      app: mainCodePath,
-      vendor: vendorFilePath,
-    },
-    platform: 'node',
-    outDir: outputDir,
-    config: false,
-    clean: false,
-    noExternal: () => true,
-    skipNodeModulesBundle: false,
-    logLevel: 'silent',
-    report: false,
-    format: 'esm',
-    unbundle: true,
-    outExtensions: () => {
-      return {
-        js: '.mjs',
-      }
-    },
-    ...options,
-  })
+  if (ctx.builder === 'tsup') {
+    // TODO
+    try {
+      const tsup = await import('tsup')
+      await tsup.build({
+        entry,
+        outDir: outputDir,
+        format: 'esm',
+        platform: 'node',
+        config: false,
+        clean: false,
+        bundle: false,
+      })
+    } catch {
+      throw new Error('tsup is not installed, please install it with "npm install tsup"')
+    }
+  } else {
+    // 开始构建到指定输出目录
+    const options = ctx?.tsdownOptions ?? {}
+    await build({
+      entry: {
+        app: mainCodePath,
+        vendor: vendorFilePath,
+      },
+      platform: 'node',
+      outDir: outputDir,
+      config: false,
+      clean: false,
+      noExternal: () => true,
+      skipNodeModulesBundle: false,
+      logLevel: 'silent',
+      report: false,
+      format: 'esm',
+      unbundle: true,
+      ...options,
+    })
+  }
+
   await clean()
 }

@@ -1,5 +1,6 @@
 import type { H3, H3Config } from 'h3'
 import type { Options } from 'tsdown'
+import type { Options as TsupOptions } from 'tsup'
 import type { createLogger, PreviewServer, ResolvedConfig, ViteDevServer } from 'vite'
 
 export interface MockH3Options {
@@ -35,6 +36,10 @@ export interface MockH3Options {
    */
   tsdownOptions?: Options
   /**
+   * tsup的构建选项
+   */
+  tsupOptions?: TsupOptions
+  /**
    * 自定义请求的前缀
    * @default "/api"
    */
@@ -43,6 +48,11 @@ export interface MockH3Options {
    * 定义H3的Config
    */
   h3Config?: H3Config
+  /**
+   * build的方式
+   * @default "tsdown"
+   */
+  builder?: 'tsdown' | 'tsup'
 }
 
 export interface MockH3Ctx extends Required<MockH3Options> {

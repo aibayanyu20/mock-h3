@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [
     vue(),
     mockH3({
+      builder: 'tsup',
       h3Config: {
         debug: true,
       },
