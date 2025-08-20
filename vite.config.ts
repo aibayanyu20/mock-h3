@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     vue(),
     mockH3({
-      builder: 'esbuild',
+      external: ['h3'],
       h3Config: {
         debug: true,
       },

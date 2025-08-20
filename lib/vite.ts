@@ -2,6 +2,7 @@ import type { PluginOption } from 'vite'
 import type { MockH3Ctx, MockH3Options } from './types'
 import { createLogger } from 'vite'
 import { createBuild } from './build'
+import { loadPkg } from './build/pkg'
 import { createServer } from './server'
 
 function mockH3(options: MockH3Options = {}): PluginOption {
@@ -45,6 +46,12 @@ function mockH3(options: MockH3Options = {}): PluginOption {
     async generateBundle() {
       if (ctx.build) {
         await createBuild(ctx)
+        const pkgStr = await loadPkg(ctx)
+        this.emitFile({
+          type: 'asset',
+          fileName: 'package.json',
+          source: pkgStr,
+        })
       }
     },
   }
