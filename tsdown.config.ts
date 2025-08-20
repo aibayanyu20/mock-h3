@@ -11,5 +11,5 @@ export default defineConfig({
   outDir: './dist',
   format: 'esm',
   tsconfig: './tsconfig.lib.json',
-  external: ['vite', 'tsup'],
+  external: ['vite', 'tsup', 'esbuild'],
 })
