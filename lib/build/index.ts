@@ -49,43 +49,25 @@ export async function createBuild(ctx: MockH3Ctx) {
   await fsp.writeFile(vendorFilePath, vendorMap, 'utf-8')
   // 内置的 server 入口
   entry.app = mainCodePath
-  if (ctx.builder === 'esbuild') {
-    const esbuild = await import('esbuild')
-    const options = ctx?.esbuildOptions ?? {}
-    await esbuild.build({
-      entryPoints: {
-        app: mainCodePath,
-      },
-      outdir: outputDir,
-      bundle: true,
-      splitting: true,
-      format: 'esm',
-      platform: 'node',
-      target: 'node18',
-      legalComments: 'none',
-      logLevel: 'silent',
-      ...options,
-    })
-  } else {
-    // 开始构建到指定输出目录
-    const options = ctx?.tsdownOptions ?? {}
-    await build({
-      entry: {
-        app: mainCodePath,
-      },
-      platform: 'node',
-      outDir: outputDir,
-      config: false,
-      clean: false,
-      noExternal: () => true,
-      skipNodeModulesBundle: false,
-      logLevel: 'silent',
-      report: false,
-      format: 'esm',
-      unbundle: true,
-      ...options,
-    })
-  }
+  // 开始构建到指定输出目录
+  const options = ctx?.tsdownOptions ?? {}
+  await build({
+    entry: {
+      app: mainCodePath,
+    },
+    platform: 'node',
+    outDir: outputDir,
+    config: false,
+    clean: false,
+    noExternal: () => true,
+    skipNodeModulesBundle: false,
+    logLevel: 'silent',
+    report: false,
+    format: 'esm',
+    unbundle: true,
+    external: ctx.external,
+    ...options,
+  })
 
   await clean()
 }
