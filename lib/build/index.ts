@@ -52,6 +52,7 @@ export async function createBuild(ctx: MockH3Ctx) {
   // 内置的 server 入口
   entry.app = mainCodePath
   // 开始构建到指定输出目录
+  const options = ctx?.tsdownOptions ?? {}
   await build({
     entry: {
       app: mainCodePath,
@@ -72,6 +73,7 @@ export async function createBuild(ctx: MockH3Ctx) {
         js: '.mjs',
       }
     },
+    ...options,
   })
   await clean()
 }
